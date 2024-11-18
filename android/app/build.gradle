@@ -1,0 +1,56 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    // Specify the namespace that matches your AndroidManifest.xml package
+    namespace = "com.example.expense_tracker"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+
+    defaultConfig {
+        applicationId = "com.example.expense_tracker"
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    buildTypes {
+        release {
+            // Enable code shrinking and resource shrinking for optimized builds
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            // Use debug signing for now (replace with release signing config for production)
+            signingConfig = signingConfigs.debug
+        }
+        debug {
+            // Disable resource and code shrinking for debug builds
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+
+    // Enable view binding (optional)
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+flutter {
+    source = "../.."
+}
