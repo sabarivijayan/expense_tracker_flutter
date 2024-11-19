@@ -17,24 +17,28 @@ class _HomePageState extends State<HomePage> {
   TextEditingController nameController = TextEditingController();
   TextEditingController amountController = TextEditingController();
 
-  Future<Map<int, double>>? _monthlyTotalsFuture;
+  Future<Map<String, double>>? _monthlyTotalsFuture;
+  Future<double>? _calculateCurrentMonthTotal;
 
+  @override
   void initState() {
     Provider.of<ExpenseDatabase>(context, listen: false).readExpenses();
-    refreshGraphData();
+    refreshData();
     super.initState();
   }
 
-  void refreshGraphData() {
+  void refreshData() {
     _monthlyTotalsFuture = Provider.of<ExpenseDatabase>(context, listen: false)
         .calculateMonthlyTotals();
+
+    _calculateCurrentMonthTotal = Provider.of<ExpenseDatabase>(context, listen:false).calculateCurrentMonthTotal();
   }
 
   void openNewExpenseBox() {
     showDialog(
         context: context,
         builder: (context) => AlertDialog(
-              title: Text("New Expense"),
+              title: const Text("New Expense"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -60,7 +64,7 @@ class _HomePageState extends State<HomePage> {
     showDialog(
         context: context,
         builder: (context) => AlertDialog(
-              title: Text("New Expense"),
+              title: const Text("New Expense"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -82,7 +86,7 @@ class _HomePageState extends State<HomePage> {
     showDialog(
         context: context,
         builder: (context) => AlertDialog(
-              title: Text("Delete Expense"),
+              title: const Text("Delete Expense"),
               actions: [_cancelButton(), _deleteExpenseButton(expense.id)],
             ));
   }
@@ -98,7 +102,32 @@ class _HomePageState extends State<HomePage> {
       int monthCount =
           calculateMonthCount(startYear, startMonth, currentMonth, currentYear);
 
+      List<Expense> currentMonthExpenses = value.allExpenses.where((expense) {
+        return expense.date.month == currentMonth &&
+            expense.date.year == currentYear;
+      }).toList();
+
       return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          title: FutureBuilder<double>(
+            future: _calculateCurrentMonthTotal,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.done) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("\₹${snapshot.data!.toStringAsFixed(2)}"),
+                    Text(getCurrentMonthName()),
+                  ],
+                );
+              } else {
+                return const Text("Loading.....");
+              }
+            },
+          ),
+        ),
+        backgroundColor: Colors.grey.shade300,
         floatingActionButton: FloatingActionButton(
           onPressed: openNewExpenseBox,
           child: const Icon(Icons.add),
@@ -112,11 +141,18 @@ class _HomePageState extends State<HomePage> {
                     future: _monthlyTotalsFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.done) {
-                        final monthlyTotals = snapshot.data ?? {};
+                        Map<String, double> monthlyTotals = snapshot.data ?? {};
                         List<double> monthlySummary = List.generate(
                             monthCount,
-                            (index) =>
-                                monthlyTotals[startMonth + index] ?? 0.0);
+                            (index) {
+                                int year = startYear + (startMonth + index - 1) ~/12;
+                                int month = (startMonth + index - 1) % 12 + 1;
+
+                                String yearMonthKey = '$year-$month';
+
+                                return monthlyTotals[yearMonthKey] ?? 0;
+                            },
+                        );
                         return MyBarGraph(
                             monthlySummary: monthlySummary,
                             startMonth: startMonth);
@@ -125,11 +161,15 @@ class _HomePageState extends State<HomePage> {
                       }
                     }),
               ),
+
+              const SizedBox(height: 25),
               Expanded(
                 child: ListView.builder(
-                  itemCount: value.allExpenses.length,
+                  itemCount: currentMonthExpenses.length,
                   itemBuilder: (context, index) {
-                    Expense individualExpense = value.allExpenses[index];
+
+                    int reversedIndex = currentMonthExpenses.length - 1 - index;
+                    Expense individualExpense = currentMonthExpenses[reversedIndex];
 
                     return MyListTile(
                       title: individualExpense.name,
@@ -175,14 +215,14 @@ class _HomePageState extends State<HomePage> {
 
             await context.read<ExpenseDatabase>().createNewExpense(newExpense);
 
-            refreshGraphData();
+            refreshData();
 
 
             nameController.clear();
             amountController.clear();
           }
         },
-        child: Text('Add expense'));
+        child: const Text('Add expense'));
   }
 
   Widget _editExpenseButton(Expense expense) {
@@ -206,7 +246,7 @@ class _HomePageState extends State<HomePage> {
               .read<ExpenseDatabase>()
               .updateExpense(existingId, updatedExpense);
 
-          refreshGraphData();
+          refreshData();
         }
       },
       child: const Text("Save"),
@@ -218,7 +258,7 @@ class _HomePageState extends State<HomePage> {
       onPressed: () async {
         Navigator.pop(context);
         await context.read<ExpenseDatabase>().deleteExpense(id);
-        refreshGraphData();
+        refreshData();
       },
       child: const Text("Delete"),
     );

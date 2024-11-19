@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 class ExpenseDatabase extends ChangeNotifier{
   static late Isar isar;
-  List<Expense> _allExpenses = [];
+  final List<Expense> _allExpenses = [];
 
   static Future<void> initialize() async{
     final dir = await getApplicationDocumentsDirectory();
@@ -48,21 +48,34 @@ class ExpenseDatabase extends ChangeNotifier{
   } 
 
 
-  Future<Map<int,double>> calculateMonthlyTotals()async{
+  Future<Map<String,double>> calculateMonthlyTotals()async{
     await readExpenses();
-    Map<int,double> monthlyTotals = {};
+    Map<String,double> monthlyTotals = {};
 
     for (var expense in _allExpenses){
-      int month = expense.date.month;
+      String yearMonth = '${expense.date.year}-${expense.date.month}';
 
-      if(!monthlyTotals.containsKey(month)){
-        monthlyTotals[month] = 0;
+      if(!monthlyTotals.containsKey(yearMonth)){
+        monthlyTotals[yearMonth] = 0;
       }
 
-      monthlyTotals[month] = monthlyTotals[month]! + expense.amount;
+      monthlyTotals[yearMonth] = monthlyTotals[yearMonth]! + expense.amount;
     }
     return monthlyTotals;
   }
+
+Future<double> calculateCurrentMonthTotal() async{
+
+  await readExpenses();
+  int currentMonth = DateTime.now().month;
+  int currentYear = DateTime.now().year;
+
+  List<Expense> currentMonthExpenses = _allExpenses.where((expense){
+    return expense.date.month == currentMonth && expense.date.year == currentYear;
+  }).toList();
+  double total = currentMonthExpenses.fold(0, (sum, expense) => sum + expense.amount);
+  return total;
+}
 
   int getStartMonth(){
     if(_allExpenses.isEmpty){
